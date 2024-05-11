@@ -196,4 +196,89 @@ class JoueursController extends AbstractController
         ]);
     }
     #endregion
+
+
+    #region KILL A PLAYER
+    #[OA\Post(
+        tags: ["Joueurs"],
+        summary: "Kill a player",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\MediaType(
+                mediaType: "application/json",
+                schema: new OA\Schema(
+                    properties: [
+                        new OA\Property(
+                            property: "roomId",
+                            type: "string",
+                            example: "roomId"
+                        ),
+                    ]
+                )
+            )
+        ),
+    )]
+    #[Route("/api/players/{username}/kill", name: "joueur.kill", methods: ["POST"])]
+    public function Kill(EntityManagerInterface $em, Comptes $compte = null, RoomsRepository $roomsRepository, Request $request): JsonResponse
+    {
+        if (!$compte) {
+            return $this->json([
+                "success" => false,
+                "message" => "Account not found"
+            ]);
+        }
+
+        $requestData = json_decode($request->getContent(), true);
+
+        $roomId = $requestData["roomId"];
+
+        $room = $roomsRepository->findOneBy(['roomId' => $roomId]);
+        if (!$room) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Room not found'
+            ]);
+        }
+
+        if (!$room->isStarted()) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Room not even started yet'
+            ]);
+        }
+
+        $collection = $room->getJoueurs();
+        $found = false;
+
+        foreach ($collection as $key => $joueur) {
+            $_collection = $joueur->getCompteId();
+            foreach ($_collection as $key => $_compte) {
+                if ($compte == $_compte) {
+                    if ($joueur->isDead()) {
+                        return $this->json([
+                            'success' => true,
+                            'message' => 'He was already dead but now he\'s even more dead'
+                        ]);
+                    }
+                    $joueur->setDead(true);
+                    $found = true;
+                }
+            }
+        }
+
+        if (!$found) {
+            return $this->json([
+                'success' => false,
+                'message' => 'No such a player in this room'
+            ]);
+        }
+
+        $em->flush();
+
+        return $this->json([
+            "success" => true,
+            "message" => "PLayer killed successfully"
+        ]);
+    }
+    #endregion
 }
