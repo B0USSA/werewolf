@@ -33,6 +33,9 @@ class Joueurs
     #[ORM\Column]
     private ?bool $inRoom = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $role = null;
+
     public function __construct()
     {
         $this->roomId = new ArrayCollection();
@@ -112,6 +115,18 @@ class Joueurs
     public function setInRoom(bool $inRoom): static
     {
         $this->inRoom = $inRoom;
+
+        return $this;
+    }
+
+    public function getRole(): ?string
+    {
+        return $this->role;
+    }
+
+    public function setRole(?string $role): static
+    {
+        $this->role = $role;
 
         return $this;
     }

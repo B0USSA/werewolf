@@ -133,7 +133,7 @@ class RoomController extends AbstractController
 
 
     #region START A ROOM GAME
-    #[OA\Delete(
+    #[OA\Get(
         tags: ["Rooms"],
         summary: "Start a room game",
     )]

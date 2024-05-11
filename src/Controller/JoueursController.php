@@ -281,4 +281,96 @@ class JoueursController extends AbstractController
         ]);
     }
     #endregion
+
+
+    
+    #region GIVE ROLE TO A PLAYER
+    #[OA\Post(
+        tags: ["Joueurs"],
+        summary: "Give a role to a player",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\MediaType(
+                mediaType: "application/json",
+                schema: new OA\Schema(
+                    properties: [
+                        new OA\Property(
+                            property: "roomId",
+                            type: "string",
+                            example: "roomId"
+                        ),
+                        new OA\Property(
+                            property: "role",
+                            type: "string",
+                            example: "Loup garou"
+                        ),
+                    ]
+                )
+            )
+        ),
+    )]
+    #[Route("/api/players/{username}/role", name: "joueur.giveRole", methods: ["POST"])]
+    public function GiveRole(EntityManagerInterface $em, Comptes $compte = null, RoomsRepository $roomsRepository, Request $request): JsonResponse
+    {
+        if (!$compte) {
+            return $this->json([
+                "success" => false,
+                "message" => "Account not found"
+            ]);
+        }
+
+        $requestData = json_decode($request->getContent(), true);
+
+        $roomId = $requestData["roomId"];
+        $role = $requestData["role"];
+
+        $room = $roomsRepository->findOneBy(['roomId' => $roomId]);
+        if (!$room) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Room not found'
+            ]);
+        }
+
+        if (!$room->isStarted()) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Room not even started yet'
+            ]);
+        }
+
+        $collection = $room->getJoueurs();
+        $found = false;
+
+        foreach ($collection as $key => $joueur) {
+            $_collection = $joueur->getCompteId();
+            foreach ($_collection as $key => $_compte) {
+                if ($compte == $_compte) {
+                    if ($joueur->getRole()) {
+                        return $this->json([
+                            'success' => true,
+                            'message' => 'Player\'s role already set'
+                        ]);
+                    }
+                    $joueur->setRole($role);
+                    $found = true;
+                }
+            }
+        }
+
+        if (!$found) {
+            return $this->json([
+                'success' => false,
+                'message' => 'No such a player in this room'
+            ]);
+        }
+
+        $em->flush();
+
+        return $this->json([
+            "success" => true,
+            "message" => "PLayer\'s role set successfully"
+        ]);
+    }
+    #endregion
 }
