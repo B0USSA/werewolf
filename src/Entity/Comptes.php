@@ -31,9 +31,16 @@ class Comptes
     #[ORM\OneToMany(targetEntity: Rooms::class, mappedBy: 'host')]
     private Collection $rooms;
 
+    /**
+     * @var Collection<int, Joueurs>
+     */
+    #[ORM\ManyToMany(targetEntity: Joueurs::class, mappedBy: 'compteId')]
+    private Collection $joueurs;
+
     public function __construct()
     {
         $this->rooms = new ArrayCollection();
+        $this->joueurs = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -102,6 +109,33 @@ class Comptes
             if ($room->getHost() === $this) {
                 $room->setHost(null);
             }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Joueurs>
+     */
+    public function getJoueurs(): Collection
+    {
+        return $this->joueurs;
+    }
+
+    public function addJoueur(Joueurs $joueur): static
+    {
+        if (!$this->joueurs->contains($joueur)) {
+            $this->joueurs->add($joueur);
+            $joueur->addCompteId($this);
+        }
+
+        return $this;
+    }
+
+    public function removeJoueur(Joueurs $joueur): static
+    {
+        if ($this->joueurs->removeElement($joueur)) {
+            $joueur->removeCompteId($this);
         }
 
         return $this;

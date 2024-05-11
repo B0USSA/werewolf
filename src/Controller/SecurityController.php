@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Comptes;
 use App\Repository\ComptesRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Firebase\JWT\JWT;
@@ -24,11 +25,6 @@ class SecurityController extends AbstractController
                 schema: new OA\Schema(
                     properties: [
                         new OA\Property(
-                            property: "username",
-                            type: "string",
-                            example: "username"
-                        ),
-                        new OA\Property(
                             property: "password",
                             type: "string",
                             example: "password"
@@ -38,22 +34,19 @@ class SecurityController extends AbstractController
             )
         ),
     )]
-    #[Route('/api/login', name: 'security.generateToken', methods: ['POST'])]
-    public function GenerateToken(Request $request, ComptesRepository $ComptesRepository, EntityManagerInterface $em): JsonResponse
+    #[Route('/api/comptes/{username}/login', name: 'security.generateToken', methods: ['POST'])]
+    public function GenerateToken(Request $request, ComptesRepository $ComptesRepository, EntityManagerInterface $em, Comptes $compte = null): JsonResponse
     {
         $requestData = json_decode($request->getContent(), true);
 
-        $username = $requestData['username'];
         $plainPassword = $requestData['password'];
 
-        $compte = $ComptesRepository->findOneBy(['username' => $username]);
-        $compte->setConnected(true);
+        if ($compte && password_verify($plainPassword, $compte->getPassword())) {
+            $compte->setConnected(true);
+            $em->flush();
 
-        $em->flush();
-
-        if ($compte && password_verify($plainPassword, $compte->getPassword())) {    
             return new JsonResponse([
-                'token' => $this->Token($username),
+                'token' => $this->Token($compte->getUsername()),
             ]);
         }
 
@@ -68,7 +61,7 @@ class SecurityController extends AbstractController
         $secretKey = "LUM€N$";
         $token = [
             "iat" => time(),
-            "exp" => time() + (3600*3), 
+            "exp" => time() + (3600 * 3),
             "sub" => $username
         ];
 

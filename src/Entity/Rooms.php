@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\RoomsRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: RoomsRepository::class)]
@@ -14,7 +16,7 @@ class Rooms
     private ?int $id = null;
 
     #[ORM\ManyToOne]
-    private ?comptes $hostId = null;
+    private ?Comptes $hostId = null;
 
     #[ORM\Column(length: 255)]
     private ?string $roomId = null;
@@ -31,17 +33,31 @@ class Rooms
     #[ORM\Column]
     private ?bool $started = null;
 
+    /**
+     * @var Collection<int, Joueurs>
+     */
+    #[ORM\ManyToMany(targetEntity: Joueurs::class, mappedBy: 'roomId')]
+    private Collection $joueurs;
+
+    #[ORM\Column]
+    private ?int $nbJoueursMax = null;
+
+    public function __construct()
+    {
+        $this->joueurs = new ArrayCollection();
+    }
+
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getHostId(): ?comptes
+    public function getHostId(): ?Comptes
     {
         return $this->hostId;
     }
 
-    public function setHostId(?comptes $hostId): static
+    public function setHostId(?Comptes $hostId): static
     {
         $this->hostId = $hostId;
 
@@ -104,6 +120,45 @@ class Rooms
     public function setStarted(bool $started): static
     {
         $this->started = $started;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Joueurs>
+     */
+    public function getJoueurs(): Collection
+    {
+        return $this->joueurs;
+    }
+
+    public function addJoueur(Joueurs $joueur): static
+    {
+        if (!$this->joueurs->contains($joueur)) {
+            $this->joueurs->add($joueur);
+            $joueur->addRoomId($this);
+        }
+
+        return $this;
+    }
+
+    public function removeJoueur(Joueurs $joueur): static
+    {
+        if ($this->joueurs->removeElement($joueur)) {
+            $joueur->removeRoomId($this);
+        }
+
+        return $this;
+    }
+
+    public function getNbJoueursMax(): ?int
+    {
+        return $this->nbJoueursMax;
+    }
+
+    public function setNbJoueursMax(int $nbJoueursMax): static
+    {
+        $this->nbJoueursMax = $nbJoueursMax;
 
         return $this;
     }

@@ -25,7 +25,7 @@ class RoomController extends AbstractController
                 schema: new OA\Schema(
                     properties: [
                         new OA\Property(
-                            property: "playerNumber",
+                            property: "nbJoueursMax",
                             type: "integer",
                             example: "8"
                         ),
@@ -62,17 +62,25 @@ class RoomController extends AbstractController
         $requestData = json_decode($request->getContent(), true);
 
         try {
-            $playerNumber = $requestData['playerNumber'];
+            $maxPlayers = $requestData['nbJoueursMax'];
             $publicRoom = $requestData['publicRoom'];
             $host = $comptesRepository->findOneBy(['username' => $requestData['hostId']]);
-            $plainPassword = $requestData['roomPassword'];
+            $plainPassword = !$publicRoom ? $requestData['roomPassword'] : null;
+
+            if (!$host) {
+                return $this->json([
+                    'success' => false,
+                    'message' => 'Account not found'
+                ]);
+            }
 
             $room = new Rooms();
             $room->setRoomPassword(isset($requestData['roomPassword']) ? password_hash($plainPassword, PASSWORD_DEFAULT) : null)
                 ->setRoomId($roomId)
                 ->setPublicRoom($publicRoom)
                 ->setHostId($host)
-                ->setPlayerNumber($playerNumber)
+                ->setPlayerNumber(0)
+                ->setNbJoueursMax($maxPlayers)
                 ->setStarted(false);
 
             $em->persist($room);
@@ -94,10 +102,10 @@ class RoomController extends AbstractController
 
     #region DELETE A ROOM
     #[OA\Delete(
-        tags: ["Comptes"],
+        tags: ["Rooms"],
         summary: "Disconnect a player",
     )]
-    #[Route("/api/rooms/{roomId}/delete", name: "compte.delete", methods: ["DELETE"])]
+    #[Route("/api/rooms/{roomId}/delete", name: "room.delete", methods: ["DELETE"])]
     public function Delete(EntityManagerInterface $em, Rooms $room = null): JsonResponse
     {
         if (!$room) {
@@ -105,6 +113,12 @@ class RoomController extends AbstractController
                 "success" => false,
                 "message" => "Room not found"
             ]);
+        }
+
+        $collection = $room->getJoueurs();
+
+        foreach ($collection as $key => $joueur) {
+            $em->remove($joueur);
         }
 
         $em->remove($room);
@@ -118,13 +132,39 @@ class RoomController extends AbstractController
     #endregion
 
 
+    #region START A ROOM GAME
+    #[OA\Delete(
+        tags: ["Rooms"],
+        summary: "Start a room game",
+    )]
+    #[Route("/api/rooms/{roomId}/start", name: "room.startGame", methods: ["GET"])]
+    public function StartGame(EntityManagerInterface $em, Rooms $room = null): JsonResponse
+    {
+        if (!$room) {
+            return $this->json([
+                "success" => false,
+                "message" => "Room not found"
+            ]);
+        }
+
+        $room->setStarted(true);
+        $em->flush();
+
+        return $this->json([
+            "success" => true,
+            "message" => "Room started successfully"
+        ]);
+    }
+    #endregion
+
+
     #region GET ALL ROOMS
     #[OA\Get(
         tags: ["Rooms"],
         summary: "Get all rooms",
     )]
     #[Route("/api/rooms", name: "compte.getAll", methods: ["GET"])]
-    public function GetAll(RoomsRepository $roomsRepository ): JsonResponse
+    public function GetAll(RoomsRepository $roomsRepository): JsonResponse
     {
         $rooms = $roomsRepository->findAll();
 
@@ -135,13 +175,14 @@ class RoomController extends AbstractController
                 "roomId" => $room->getRoomId(),
                 "host" => $room->getHostId()->getUsername(),
                 "playerNumber" => $room->getPlayerNumber(),
+                "maxPlayers" => $room->getNbJoueursMax(),
                 "isPublicRoom" => $room->isPublicRoom(),
                 "isStarted" => $room->isStarted()
             ];
 
             $roomsTable[] = $_room;
         }
-        
+
         return $this->json($roomsTable);
     }
     #endregion
