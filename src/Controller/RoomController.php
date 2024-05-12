@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Comptes;
 use App\Entity\Rooms;
 use App\Repository\ComptesRepository;
 use App\Repository\RoomsRepository;
@@ -154,6 +155,43 @@ class RoomController extends AbstractController
             "success" => true,
             "message" => "Room started successfully"
         ]);
+    }
+    #endregion
+
+
+    #region LIST OF PLAYERS IN A ROOM
+    #[OA\Get(
+        tags: ["Rooms", "Joueurs"],
+        summary: "List of players in a room",
+    )]
+    #[Route("/api/rooms/{roomId}/players", name: "room.players", methods: ["GET"])]
+    public function Players(Rooms $room = null, ComptesRepository $comptesRepository): JsonResponse
+    {
+        if (!$room) {
+            return $this->json([
+                "success" => false,
+                "message" => "Room not found"
+            ]);
+        }
+
+        $collection = $room->getJoueurs();
+        $response = [];
+
+        foreach ($collection as $key => $player) {
+            // $compte = $comptesRepository->findOneBy(["id" => $player->getCompteId()->toArray()]);
+
+            $al = $player->getCompteId()->toArray();
+            foreach ($al as $key => $kk) {
+                $_player = [
+                    "nom" => $kk->getUsername(),
+                    "role" => $player->getRole(),
+                ];
+            }
+
+            $response[] = $_player;
+        }
+
+        return $this->json($response);
     }
     #endregion
 
